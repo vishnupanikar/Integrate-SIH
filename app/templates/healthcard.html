@@ -1,0 +1,27 @@
+
+{% extends "base.html" %}
+
+{% block content %}
+
+
+{% for value in healthcard:%}
+    <hr>
+    <h2 style="color:red"><b>{{value[0]}}</b></h2>
+    {%for i in range(1,16):%}
+
+        <h3>{{value[i][0]}}</h3>
+        <ul>
+        {% if i<8  %}
+            {%for ans in value[i][1]: %}
+                <li><h3>{{ans}}</h3></li>
+            {% endfor %}
+        {% else %}
+            <li><h3>{{value[i][1]}}</h3></li>
+        {% endif %}
+        </ul>
+        <br>
+    {% endfor %}
+{% endfor %}
+
+
+{% endblock %}

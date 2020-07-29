@@ -1,3 +1,4 @@
 from flask_pymongo import PyMongo
+from app import serverApplication
 
-mongo = PyMongo(app)
+mongo = PyMongo(serverApplication)

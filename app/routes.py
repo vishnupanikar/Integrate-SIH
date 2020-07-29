@@ -2,9 +2,11 @@ import os
 import datetime
 from app import serverApplication
 from app.views import mongo
-from flask import request
+from flask import request, redirect, render_template
 from werkzeug.utils import secure_filename 
 
+
+#-------------------------------------------API routes for flutter 
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg'}
 FILE_PATH=''
 
@@ -74,8 +76,11 @@ def save_ee():
       jsonData = request.get_json()
       print(type(jsonData))
       reportType = jsonData['report-type']
+      state = jsonData['state']
+      district = jsonData['district']
+      region = jsonData['region']
       dataToStore = {"reporter":jsonData['reporter'],"data":jsonData['data']}
-      f = mongo.db[reportType].insert_one({'time-stamp':datetime.datetime.now(),'report-data':dataToStore})
+      f = mongo.db.embankmentEmergencies.update_one({"state":state},{"$push":{reportType:{'time-stamp':datetime.datetime.now(),'district':district,'region':region,'report-data':dataToStore}}})
       print(f)
       if f:
          response['status'] = 1         
@@ -85,6 +90,7 @@ def save_ee():
          response['message'] = "Error submitting"
    print(response)
    return response   
+
 
 @serverApplication.route('/api/getSurveys',methods=['POST'])
 def getSurveyData():
@@ -96,10 +102,31 @@ def getSurveyData():
       jsonRequest = request.get_json()
       state = jsonRequest['state']
       district = jsonRequest['district']
-      data = mongo.db.pendingSurveys.find({'$and':[{'state':state},{'district':district}]},{'_id':0})
-      i=0
-      for survey in data:
-         surveysList.append(survey) 
+      data = mongo.db.pendingSurveys.find({'state':state},{'_id':0})
+      surveys=""
+      
+      for doc in data:
+         #print("\nDOC\n")
+         #print(doc)
+         surveys=doc['surveys']
+      print(surveys)
+
+      for item in surveys:
+         if(item['district']==district):
+            #print(item)
+            #print("\n")
+            surveyId = item['surveyId']
+            user = item['surveyer']
+            timestamp = item['date-time']
+            loc = item['location']
+            surveyStatus = item['survey-status']
+            imageURL = item['image-url']
+            surveyDataToSend = {"surveyId":surveyId,"surveyer":user,"time-stamp":timestamp,"location":loc,"survey-status":surveyStatus,"image-url":imageURL}
+            #print(surveyDataToSend)
+            surveysList.append(surveyDataToSend)
+            
+      # for survey in data:
+      #    surveysList.append(survey) 
    if(len(surveysList)<1):
       response['status'] = 0
       response['message'] = "No surveys found" 
@@ -109,6 +136,7 @@ def getSurveyData():
    print("Response to send")
    print(response)
    return response  
+
 
 @serverApplication.route('/api/survey/uploadImage',methods=['POST'])
 def save_image():
@@ -154,3 +182,44 @@ def saveSurvey():
          response['message'] = "Couldn't store data..."
    
    return response
+
+
+#--------------------------------------------Routes for web application
+@serverApplication.route('/')
+@serverApplication.route('/index')
+def index():
+    user = {'nickname': 'JAID'}  # fake user
+    return render_template('index.html',
+                           title='Home',
+                           user=user)
+
+@serverApplication.route('/webmap')
+def Webmap():
+    user={'nickname':'Jaid'}
+    return render_template('WebMap.html',title='WorkSpace',user=user)
+
+@serverApplication.route('/fetchSurvey')
+def dynamicSurvey():
+    from app.surveyData import mongo2csv
+    mongo2csv(csvFile="./app/static/surveyData.csv")
+    user = {'nickname': 'JAID'}  # fake user
+    return redirect('/scene')
+
+@serverApplication.route('/scene')
+def scene():
+    user = {'nickname': 'JAID'}  # fake user
+    return render_template('arcscene.html',
+                           title='Datas',
+                           user=user)
+
+@serverApplication.route('/heatmap')
+def heatmap():
+    user={'nickname':'Jaid'}
+    return render_template('heatmap.html',title='HeatMap',user=user)
+
+@serverApplication.route('/healthcard')
+def healthcard():
+    from app.finalHealthCard import getHealthValues
+    healthcard=getHealthValues()
+    user={'nickname':'Jaid'}
+    return render_template('healthcard.html',title='HealthCard',user=user,healthcard=healthcard)
